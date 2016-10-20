@@ -1,71 +1,87 @@
-# if you want to test wildcards more quickly, please comment line 13 and use fewer characters
 import sys
+import ScrabbleMod
 import string
-from score_function import score_word
-from itertools import permutations
-from collections import Counter
-from collections import OrderedDict
+import collections
 
-## get user input from command line argument
-#rack = input("enter 7 characters: ").lower()
-if len(sys.argv) < 2:
-    print("Please enter one argument.")
-    quit()
-rack = sys.argv[1].lower()
-if len(rack) != 7:
-    print("You didn't enter 7 characters.")
-    quit()
-count_word = Counter(rack)
-if count_word['*'] + count_word['?'] >2:
-    print("You entered more than 2 wildcards.")
-    quit()
+"""This script provides a list of words that can be made from a 7 tile or less scrabble rack
+   call it with a string of letters (the rack) a word refernce file and an optional letter 
+   position constraint  example: scrabble.py "asdfq*?" sowpods.txt v3
+   Wildcards take the form of * or ? and there can be up to 2 of them"""
 
-## find all valid scrabble words
-all_words=[]
-scrabble_ls=[]
+print (sys.argv)
 
-with open("sowpods.txt","r") as infile:
-    raw_input = infile.readlines()
-    data = [datum.strip('\n') for datum in raw_input]
+# check the input and catch commpn errors
+if len(sys.argv)<2:
+	raise Exception ('Argument error: please supply 1) a rack string and 2) a word file')
+if len(sys.argv[1])>7 | len(sys.argv[1])<1:
+	raise Exception ('Rack error: please supply a good rack, of 1-7 tiles') 
 
-## find all combinations of characters
-for i in range(len(rack)):
-    temp=[''.join(t) for t in list(permutations(rack, i+1))]
-    all_words.extend(temp)
-    
-## whether the combination is in the data dictionary    
-for item in all_words:
-    item_ls=list(item)
-    scrabble=[]
-    position=[]
-    # find the position of all wildcards
-    for i in range(len(item_ls)):
-        if item_ls[i] in ('?','*'):
-            position.append(i)
-    
-    if len(position) == 0:
-        if item.upper() in data:
-            scrabble_ls.append(item)
-    elif len(position)==1:
-        for j in string.ascii_lowercase:
-            item_ls[position[0]]=j
-            item2=''.join(item_ls)
-            if item2.upper() in data:
-                scrabble_ls.append(item)
-                break
-    elif len(position) == 2:
-        for j in string.ascii_lowercase:
-            item_ls[position[0]]=j
-            for k in string.ascii_lowercase:
-                item_ls[position[1]] = k
-                item2=''.join(item_ls)
-                if item2 in data:
-                    scrabble.append(item)
-                    break
-scrabble=set(scrabble_ls)
+# LOAD EVERYTHING
+with open(sys.argv[2], 'r') as f:
+	wordfile=f.readlines()
+	data = [datum.strip('\n\r') for datum in wordfile]
 
-## sort the scores, score for wildcard is 0
-scores={i:score_word(i) for i in scrabble}
-scores_sort=OrderedDict(sorted(scores.items(), key=lambda t: t[1], reverse=True))
-for word, score in scores_sort.items():
-    print(score,word)
+print('this is a sample of your wordfile', str(data[0:6]))
+rack=sys.argv[1].upper()
+
+
+# if there is a fixed position filter the list 
+try:
+	#fixed=sys.argv[3]
+	fx_ltr=str(sys.argv[3][0].upper())
+	fx_num=int(sys.argv[3][1])-1 # remember to adjust for 0 indexing
+	print ('The fixed position letter is ' + fx_ltr)
+	print ('The fixed position number is ' + str(fx_num))	
+	if str.find(rack, fx_ltr) < 0 : 	# check that the fixed letter is in the rack 
+		print('the rack is {0} and the letter is {1}'.format(rack, fx_ltr))
+		raise Exception ('the letter listed as required is not in the rack')
+except:
+	fx_ltr=None
+
+#Check each word in the list to see if it can be made up of the letters in the rack
+#To allow for wildcards, keep a counter and skip n mismatches when you run into a mismatch
+WdCd=str.count(rack, '*' ) + str.count(rack, '?' )
+AcceptedWordVal={}
+
+# MAIN LOOP 
+for word in data: # for each word 
+	# RESET THE VARIABLES
+	WordScore=0 # this can be build letter by letter as they match (wildcards are skipped)
+	temprack=list(rack) # an consumable rack that we can pop letters off of
+	WdCd=str.count(rack, '*' ) + str.count(rack, '?' ) 
+
+	# FIXED POSITION CHECKS
+	# if the fixed position does not match the word or if the word is 
+	# too short, go to the next word
+	if fx_ltr is not None: 
+		#print ('fixed ltr is not none')
+		if len(word)-1 < fx_num:
+			continue
+			#print('lent_iss')
+		if word[int(fx_num)] != fx_ltr:
+			continue
+			#print('num_iss')
+
+	# NOTE the use of a "for break else loop" here
+	# informative print statements can be used to trouble shoot (remove ##> comment marks)
+	for i in range(len(word)):	# check each letter of the word to see if it is in the rack	
+		if word[i] not in temprack:
+
+			if WdCd != 0: # if there is a 
+			   WdCd -= 1
+			   ##>print('used wildcard for' + word[i] + 'in word' + word)
+			else: 
+				##>print (rack + 'does not have all the letters in' + word)
+				break  # check the next letter 
+		elif word[i] in temprack: # if there is a match remove the tile from your rack
+			temprack.remove(word[i])
+			WordScore=WordScore+ScrabbleMod.score_word(word[i]) # score only non wildcard letters
+			##>print('Found the letter: ' + word[i] + 'in word' + word)
+			##>print("These are your remaining letters " + str(temprack))
+		##>input("next?")
+	else : 
+		##>print ('found all letters for', word, 'in ', str(rack))
+		AcceptedWordVal[word]=WordScore
+WordLs=(sorted(AcceptedWordVal.items(), key = lambda x: x[1], reverse=True))
+print(WordLs)
+
