@@ -1,0 +1,3 @@
+Final Version by the team is Version B. However additional statistics and temperature analysis in part 5 was added too late. That part doesn't only match chart style of other parts but also makes the writeup not very coherent.
+
+Personally, I prefer version A. Thus, I pushed two versions to the repository. Please feel free to score either one.
